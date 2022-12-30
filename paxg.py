@@ -48,11 +48,15 @@ def logging_loop(args):
             f.write('time,xau,paxg\n')
     
     while True:
-        dt, xau, paxg = datetime.datetime.now(), get_xau_price(), get_paxg_price()
-        with open(args.logfile,'a') as f:
-            row = '{},{},{}\n'.format(dt.replace(microsecond=0).isoformat(), xau, paxg)
-            if args.verbose: print(row, end='')
-            f.write(row)
+        try:
+            dt, xau, paxg = datetime.datetime.now(), get_xau_price(), get_paxg_price()
+            with open(args.logfile,'a') as f:
+                row = '{},{},{}\n'.format(dt.replace(microsecond=0).isoformat(), xau, paxg)
+                if args.verbose: print(row, end='')
+                f.write(row)
+        except:
+            if args.verbose:
+                print('Price logging failed for some reason (check internet)')
         time.sleep(args.interval)
 
 
