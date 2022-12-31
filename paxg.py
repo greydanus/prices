@@ -17,41 +17,48 @@ def innocent_request(url):
            f'(KHTML, like Gecko) Chrome/75.0.3770.{n:03d} Safari/537.36', 'Cache-Control': 'no-cache'}
     return requests.get(url, headers=headers).text
 
-def get_xau_price(text=None):
-    '''Takes in raw html from tradingeconomics.com as "text" parameter'''
-    if text is None:
-        text = innocent_request("https://tradingeconomics.com/")
-    gold_section_ix = text.find('<a href="/commodity/gold">')
-    xau_price = text[gold_section_ix:gold_section_ix+600].replace(' ', '').split('\r\n')[4]
+def try_str2float(s):
     try:
-        xau_price = float(xau_price)
+        return float(s)
     except:
-        raise ValueError('Maybe web scrape failed; this string should be a gold price: "{}"'.format(xau_price))
-    return xau_price
+        raise ValueError('This string should be convertible to a float: "{}"'.format(s))
 
-def get_paxg_price(text=None):
-    '''Takes in raw html from coinmarketcap.com as "text" parameter'''
-    if text is None:
-        text = innocent_request("https://coinmarketcap.com/currencies/pax-gold/")
+def get_paxg_price():
+    text = innocent_request("https://coinmarketcap.com/currencies/pax-gold/")
     gold_section_ix = text.find('<strong>PAX Gold Price</strong>')
     paxg_price = re.split('<td>|</td>', text[gold_section_ix:gold_section_ix+100])[1]
     paxg_price = paxg_price.replace('$', '').replace(',', '')
-    try:
-        paxg_price = float(paxg_price)
-    except:
-        raise ValueError('Maybe web scrape failed; this string should be a gold price: "{}"'.format(paxg_price))
-    return paxg_price
+    return try_str2float(paxg_price)
+
+def get_xau_price():
+    text = innocent_request("https://tradingeconomics.com/")
+    gold_section_ix = text.find('<a href="/commodity/gold">')
+    xau_price = text[gold_section_ix:gold_section_ix+600].replace(' ', '').split('\r\n')[4]
+    return try_str2float(xau_price)
+
+def get_crdoil_price():
+    text = innocent_request("https://tradingeconomics.com/")
+    crdoil_section_ix = text.find('<a href="/commodity/crude-oil">')
+    crdoil_price = text[crdoil_section_ix:crdoil_section_ix+600].replace(' ', '').split('\r\n')[4]
+    return try_str2float(crdoil_price)
+
+def get_2yr_rate():
+    text = innocent_request("https://tradingeconomics.com/united-states/2-year-note-yield")
+    latest_2yr_ix = text.find('"last":')
+    rate = text[latest_2yr_ix:latest_2yr_ix+15].split(':')[1]
+    return try_str2float(rate)
 
 def logging_loop(args):
     if not os.path.isfile(args.logfile):
         with open(args.logfile, 'w') as f:
-            f.write('time,xau,paxg\n')
+            f.write('time,paxg,xau,crudeoil,us2yr\n')
     
     while True:
         try:
-            dt, xau, paxg = datetime.datetime.now(), get_xau_price(), get_paxg_price()
+            dt = datetime.datetime.now().replace(microsecond=0).isoformat()
+            paxg, xau, crdoil, us2yr = get_paxg_price(), get_xau_price(), get_crdoil_price(), get_2yr_rate()
             with open(args.logfile,'a') as f:
-                row = '{},{},{}\n'.format(dt.replace(microsecond=0).isoformat(), xau, paxg)
+                row = '{},{},{},{},{}\n'.format(dt,paxg,xau,crdoil,us2yr)
                 if args.verbose: print(row, end='')
                 f.write(row)
         except:
